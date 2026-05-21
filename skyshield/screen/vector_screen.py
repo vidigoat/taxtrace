@@ -124,7 +124,7 @@ def vector_screen(
         if ii.size == 0:
             continue
         d_pairs = np.sqrt(d2[ii, jj])
-        for pi, pj, d_val in zip(ii, jj, d_pairs):
+        for pi, pj, d_val in zip(ii, jj, d_pairs, strict=False):
             i_g = int(idx_active[pi])
             j_g = int(idx_active[pj])
             id_i = sat_ids[i_g]
@@ -151,7 +151,7 @@ def vector_screen(
             p0 = positions[idx_a, k]      # (M, 3)
             p1 = positions[idx_a, k + 1]
             v0 = velocities[idx_a, k]
-            v1 = velocities[idx_a, k + 1]
+            # v1 deliberately omitted — within-interval linear motion uses v0 only
 
             # Distance matrix at sample k
             sq_norms_k = (p0 * p0).sum(axis=1)
@@ -225,15 +225,19 @@ def vector_screen(
                 continue
             if last_emitted is not None and (t_k - last_emitted).total_seconds() < min_gap_seconds:
                 # Same event window — keep the deeper minimum
-                if candidates and candidates[-1].obj1_id == key[0] and candidates[-1].obj2_id == key[1]:
-                    if d_k < candidates[-1].approx_min_range_km:
-                        candidates[-1] = CandidatePair(
-                            obj1_id=key[0],
-                            obj2_id=key[1],
-                            approx_min_range_km=d_k,
-                            approx_tca=t_k,
-                        )
-                        last_emitted = t_k
+                same_pair = (
+                    candidates
+                    and candidates[-1].obj1_id == key[0]
+                    and candidates[-1].obj2_id == key[1]
+                )
+                if same_pair and d_k < candidates[-1].approx_min_range_km:
+                    candidates[-1] = CandidatePair(
+                        obj1_id=key[0],
+                        obj2_id=key[1],
+                        approx_min_range_km=d_k,
+                        approx_tca=t_k,
+                    )
+                    last_emitted = t_k
                 continue
             candidates.append(CandidatePair(
                 obj1_id=key[0],

@@ -39,7 +39,6 @@ from skyshield.propagate.ephemeris import (
     interp_state,
 )
 from skyshield.propagate.ocm import OCM, parse_ocm_directory
-from skyshield.screen.smart_screen import smart_screen
 from skyshield.screen.vector_screen import vector_screen
 from skyshield.types import Conjunction
 

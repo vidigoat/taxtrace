@@ -131,7 +131,7 @@ def optimize_fleet_maneuvers(
         mask_all[pi, slot] = True
 
     r_rel_j = jnp.asarray(r_rel_all)
-    v_rel_j = jnp.asarray(v_rel_all)
+    # v_rel_j was tracked for future second-order maneuver effects; not used yet
     tca_j = jnp.asarray(tca_all)
     mask_j = jnp.asarray(mask_all)
 
