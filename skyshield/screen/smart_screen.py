@@ -84,18 +84,21 @@ def smart_screen(
     np.fill_diagonal(survives_ap, False)
 
     # ---- Stage 2: octree per time slice ----
+    # Collect EVERY (t, pair, distance) where the pair is within the screening radius.
+    # Then identify local minima per pair — those become separate conjunctions.
     n_steps = int((window_end - window_start).total_seconds() / time_step_seconds) + 1
-    candidates: dict[tuple[int, int], CandidatePair] = {}
+    # Per pair, list of (epoch, distance) within-radius samples
+    pair_samples: dict[tuple[int, int], list[tuple[datetime, float]]] = {}
+
+    from skyshield.propagate.ephemeris import interp_state
+
     for step in range(n_steps):
         t = window_start + timedelta(seconds=step * time_step_seconds)
-        # Interpolate positions for each OCM at time t
         positions = np.zeros((len(ocms), 3))
         active_mask = np.zeros(len(ocms), dtype=bool)
         for i, ocm in enumerate(ocms):
             if not ocm.states:
                 continue
-            # Find nearest state
-            from skyshield.propagate.ephemeris import interp_state
             result = interp_state(ocm, t)
             if result is None:
                 continue
@@ -108,13 +111,11 @@ def smart_screen(
             continue
         active_positions = positions[active_idx]
 
-        # Build octree on active subset
         root = build_octree(active_positions, leaf_size=16, max_depth=12)
         pairs_local = octree_candidate_pairs(
             root, active_positions, screening_radius_km=screening_radius_km
         )
 
-        # Map local indices back to global, and filter by apogee/perigee result
         for local_i, local_j in pairs_local:
             i_g = active_idx[local_i]
             j_g = active_idx[local_j]
@@ -126,20 +127,43 @@ def smart_screen(
                 continue
             key = (min(id_i, id_j), max(id_i, id_j))
             dist = float(np.linalg.norm(active_positions[local_i] - active_positions[local_j]))
-            if key in candidates:
-                if dist < candidates[key].approx_min_range_km:
-                    candidates[key] = CandidatePair(
-                        obj1_id=key[0],
-                        obj2_id=key[1],
-                        approx_min_range_km=dist,
-                        approx_tca=t,
-                    )
-            else:
-                candidates[key] = CandidatePair(
-                    obj1_id=key[0],
-                    obj2_id=key[1],
-                    approx_min_range_km=dist,
-                    approx_tca=t,
-                )
+            pair_samples.setdefault(key, []).append((t, dist))
 
-    return sorted(candidates.values(), key=lambda c: c.approx_min_range_km)
+    # ---- Stage 3: per-pair local-minima detection ----
+    # For each pair, find local minima of the (time, distance) trace.
+    # Each local minimum becomes one CandidatePair (one CDM row).
+    candidates: list[CandidatePair] = []
+    for key, samples in pair_samples.items():
+        samples.sort(key=lambda s: s[0])
+        # Sliding window: a sample is a local minimum if it's <= both neighbors
+        # AND it's a "separate event" (gap of more than ~half an orbit period
+        # from the previous emitted local minimum). For LEO orbits ~90 min,
+        # we use 30 min as the minimum gap between distinct events.
+        min_gap_seconds = 1800.0
+        last_emitted_epoch: datetime | None = None
+        n = len(samples)
+        for k in range(n):
+            t_k, d_k = samples[k]
+            # Local minimum: smaller than neighbors (or endpoint that's monotone)
+            is_min = True
+            if k > 0 and samples[k - 1][1] < d_k:
+                is_min = False
+            if k < n - 1 and samples[k + 1][1] < d_k:
+                is_min = False
+            if not is_min:
+                continue
+            # Skip if too close to previous emitted (same physical event)
+            if (
+                last_emitted_epoch is not None
+                and (t_k - last_emitted_epoch).total_seconds() < min_gap_seconds
+            ):
+                continue
+            candidates.append(CandidatePair(
+                obj1_id=key[0],
+                obj2_id=key[1],
+                approx_min_range_km=d_k,
+                approx_tca=t_k,
+            ))
+            last_emitted_epoch = t_k
+
+    return sorted(candidates, key=lambda c: (c.obj1_id, c.obj2_id, c.approx_tca))

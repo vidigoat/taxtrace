@@ -15,7 +15,7 @@ Implements the run configuration specified in the TraCSS User Guide §4:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Literal
 
@@ -140,8 +140,9 @@ def run_tracss_screening(
         o2 = ocm_by_id.get(cand.obj2_id)
         if o1 is None or o2 is None:
             continue
-        # Refine TCA via Brent's method around approx_tca (omitted for simplicity)
-        tca = cand.approx_tca
+
+        # Refine TCA via fine-grained search (golden-section-style) over ±2 min
+        tca = _refine_tca(o1, o2, cand.approx_tca, half_window_s=120.0, n_iter=20)
 
         s1 = interp_state(o1, tca)
         s2 = interp_state(o2, tca)
@@ -153,6 +154,10 @@ def run_tracss_screening(
         v_rel = v2 - v1
         min_range = float(np.linalg.norm(miss_vec))
         vrel_kms = float(np.linalg.norm(v_rel))
+
+        # Skip if refined miss distance exceeds the screening radius
+        if min_range > screening_radius_km:
+            continue
 
         # Get covariances at TCA (interpolate from OCM if present). 3x3 position-only.
         cov1 = _interp_covariance(o1, tca)
@@ -235,6 +240,50 @@ def _interp_covariance(ocm: OCM, epoch: datetime) -> np.ndarray:
         return np.eye(3) * 1e-6   # 1 m sigma fallback (sigma^2 in km^2)
     nearest = min(ocm.covariances, key=lambda c: abs((c.epoch - epoch).total_seconds()))
     return nearest.as_3x3_position()
+
+
+def _refine_tca(
+    o1: OCM, o2: OCM, t0: datetime, *, half_window_s: float = 120.0, n_iter: int = 20
+) -> datetime:
+    """Refine the time of closest approach via golden-section search.
+
+    Given a rough TCA `t0` (from coarse screening), search for the true minimum
+    of |r1(t) - r2(t)| over the bracket [t0 - half_window, t0 + half_window].
+    Uses golden-section minimization which is robust to noisy interpolation.
+    """
+    from math import sqrt
+    phi = (sqrt(5.0) - 1.0) / 2.0  # golden ratio conjugate ≈ 0.618
+
+    def dist(t: datetime) -> float:
+        s1 = interp_state(o1, t)
+        s2 = interp_state(o2, t)
+        if s1 is None or s2 is None:
+            return float("inf")
+        return float(np.linalg.norm(s2[0] - s1[0]))
+
+    # Bracket in seconds offset from t0
+    a = -half_window_s
+    b = half_window_s
+    x1 = a + (1 - phi) * (b - a)
+    x2 = a + phi * (b - a)
+    f1 = dist(t0 + timedelta(seconds=x1))
+    f2 = dist(t0 + timedelta(seconds=x2))
+
+    for _ in range(n_iter):
+        if f1 < f2:
+            b = x2
+            x2 = x1
+            f2 = f1
+            x1 = a + (1 - phi) * (b - a)
+            f1 = dist(t0 + timedelta(seconds=x1))
+        else:
+            a = x1
+            x1 = x2
+            f1 = f2
+            x2 = a + phi * (b - a)
+            f2 = dist(t0 + timedelta(seconds=x2))
+
+    return t0 + timedelta(seconds=(a + b) / 2.0)
 
 
 def write_cdm_csv(conjunctions: list[Conjunction], path: str | Path) -> None:
