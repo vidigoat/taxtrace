@@ -154,16 +154,16 @@ def run_tracss_screening(
         min_range = float(np.linalg.norm(miss_vec))
         vrel_kms = float(np.linalg.norm(v_rel))
 
-        # Get covariances at TCA (interpolate from OCM if present)
+        # Get covariances at TCA (interpolate from OCM if present). 3x3 position-only.
         cov1 = _interp_covariance(o1, tca)
         cov2 = _interp_covariance(o2, tca)
 
-        cov_combined = cov1[:3, :3] + cov2[:3, :3]
+        cov_combined = cov1 + cov2
         try:
             pc = pc_alfano2004(
                 r1=r1, r2=r2, v1=v1, v2=v2,
-                cov1_pos_j2000=cov1[:3, :3],
-                cov2_pos_j2000=cov2[:3, :3],
+                cov1_pos_j2000=cov1,
+                cov2_pos_j2000=cov2,
                 hbr_m=hbr_m,
             )
         except Exception:
@@ -199,25 +199,25 @@ def run_tracss_screening(
             local_x1=float(local_1[0]) if local_1.size >= 1 else 0.0,
             local_y1=float(local_1[1]) if local_1.size >= 2 else 0.0,
             local_z1=0.0,
-            C1_xx=float(cov1[0, 0]) if cov1 is not None else None,
-            C1_xy=float(cov1[0, 1]) if cov1 is not None else None,
-            C1_xz=float(cov1[0, 2]) if cov1 is not None else None,
-            C1_yy=float(cov1[1, 1]) if cov1 is not None else None,
-            C1_yz=float(cov1[1, 2]) if cov1 is not None else None,
-            C1_zz=float(cov1[2, 2]) if cov1 is not None else None,
+            c1_11=float(cov1[0, 0]) if cov1 is not None else None,
+            c1_12=float(cov1[1, 0]) if cov1 is not None else None,
+            c1_13=float(cov1[2, 0]) if cov1 is not None else None,
+            c1_22=float(cov1[1, 1]) if cov1 is not None else None,
+            c1_23=float(cov1[2, 1]) if cov1 is not None else None,
+            c1_33=float(cov1[2, 2]) if cov1 is not None else None,
             x2=float(r2[0]), y2=float(r2[1]), z2=float(r2[2]),
             vx2=float(v2[0]), vy2=float(v2[1]), vz2=float(v2[2]),
             local_x2=float(-local_1[0]) if local_1.size >= 1 else 0.0,
             local_y2=float(-local_1[1]) if local_1.size >= 2 else 0.0,
             local_z2=0.0,
-            C2_xx=float(cov2[0, 0]) if cov2 is not None else None,
-            C2_xy=float(cov2[0, 1]) if cov2 is not None else None,
-            C2_xz=float(cov2[0, 2]) if cov2 is not None else None,
-            C2_yy=float(cov2[1, 1]) if cov2 is not None else None,
-            C2_yz=float(cov2[1, 2]) if cov2 is not None else None,
-            C2_zz=float(cov2[2, 2]) if cov2 is not None else None,
-            obj1_file=o1.source_file,
-            obj2_file=o2.source_file,
+            c2_11=float(cov2[0, 0]) if cov2 is not None else None,
+            c2_12=float(cov2[1, 0]) if cov2 is not None else None,
+            c2_13=float(cov2[2, 0]) if cov2 is not None else None,
+            c2_22=float(cov2[1, 1]) if cov2 is not None else None,
+            c2_23=float(cov2[2, 1]) if cov2 is not None else None,
+            c2_33=float(cov2[2, 2]) if cov2 is not None else None,
+            obj1_filename=o1.source_file,
+            obj2_filename=o2.source_file,
         )
         result.conjunctions.append(conj)
 
@@ -227,11 +227,14 @@ def run_tracss_screening(
 
 
 def _interp_covariance(ocm: OCM, epoch: datetime) -> np.ndarray:
-    """Find the nearest covariance for the given epoch, or default to identity * 1e-3."""
+    """Find the nearest covariance for the given epoch, or default to identity * 1e-6.
+
+    Always returns a 3x3 position covariance (km^2).
+    """
     if not ocm.covariances:
-        return np.eye(6) * 1e-3   # 1 m sigma fallback (in km^2 it's 1e-6, so 1e-3 ≈ ~1m)
+        return np.eye(3) * 1e-6   # 1 m sigma fallback (sigma^2 in km^2)
     nearest = min(ocm.covariances, key=lambda c: abs((c.epoch - epoch).total_seconds()))
-    return nearest.as_matrix()
+    return nearest.as_3x3_position()
 
 
 def write_cdm_csv(conjunctions: list[Conjunction], path: str | Path) -> None:

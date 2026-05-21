@@ -133,13 +133,15 @@ class Conjunction(BaseModel):
     local_y1: float
     local_z1: float
 
-    # Upper triangular of Object 1 UVW covariance (6 elements: xx, xy, xz, yy, yz, zz)
-    C1_xx: float | None
-    C1_xy: float | None
-    C1_xz: float | None
-    C1_yy: float | None
-    C1_yz: float | None
-    C1_zz: float | None
+    # Lower-triangular matrix elements of Object 1 UVW position covariance.
+    # Column names match the official TraCSS answer-key CSV exactly:
+    # c1_11 = sigma_xx, c1_12 = sigma_xy, c1_13 = sigma_xz, c1_22 = sigma_yy, ...
+    c1_11: float | None
+    c1_12: float | None
+    c1_13: float | None
+    c1_22: float | None
+    c1_23: float | None
+    c1_33: float | None
 
     # Object 2 state at TCA (J2000)
     x2: float
@@ -154,30 +156,31 @@ class Conjunction(BaseModel):
     local_y2: float
     local_z2: float
 
-    # Upper triangular of Object 2 UVW covariance
-    C2_xx: float | None
-    C2_xy: float | None
-    C2_xz: float | None
-    C2_yy: float | None
-    C2_yz: float | None
-    C2_zz: float | None
+    # Lower-triangular Object 2 UVW position covariance
+    c2_11: float | None
+    c2_12: float | None
+    c2_13: float | None
+    c2_22: float | None
+    c2_23: float | None
+    c2_33: float | None
 
-    obj1_file: str | None
-    obj2_file: str | None
+    # Match answer-key column names (obj1_filename, not obj1_file)
+    obj1_filename: str | None
+    obj2_filename: str | None
 
     @classmethod
     def csv_columns(cls) -> list[str]:
-        """The exact CSV column order matching the TraCSS answer key."""
+        """The exact CSV column order matching the TraCSS answer key (45 columns)."""
         return [
             "run_id", "conj_id", "obj1", "met_criteria1", "obj2", "met_criteria2",
             "min_range", "Vrel", "prob", "dilution", "mdistance", "epoch", "jdate",
             "x1", "y1", "z1", "vx1", "vy1", "vz1",
             "local_x1", "local_y1", "local_z1",
-            "C1_xx", "C1_xy", "C1_xz", "C1_yy", "C1_yz", "C1_zz",
+            "c1_11", "c1_12", "c1_13", "c1_22", "c1_23", "c1_33",
             "x2", "y2", "z2", "vx2", "vy2", "vz2",
             "local_x2", "local_y2", "local_z2",
-            "C2_xx", "C2_xy", "C2_xz", "C2_yy", "C2_yz", "C2_zz",
-            "obj1_file", "obj2_file",
+            "c2_11", "c2_12", "c2_13", "c2_22", "c2_23", "c2_33",
+            "obj1_filename", "obj2_filename",
         ]
 
 

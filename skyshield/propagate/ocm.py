@@ -74,23 +74,55 @@ class OCMOrbitState:
 
 @dataclass
 class OCMCovariance:
-    """6x6 covariance matrix at a given epoch."""
+    """Covariance matrix at a given epoch. Either 3x3 (CARTP, position-only)
+    or 6x6 (CARTPV, position + velocity).
+
+    Stored as the lower-triangular matrix (LTM) — matches the CCSDS COV_ORDERING
+    convention used by the Aerospace IVV dataset. Order for 3x3:
+        c11, c21, c22, c31, c32, c33
+    Order for 6x6:
+        c11, c21, c22, c31, c32, c33, ..., c66
+    """
 
     epoch: datetime
-    # 21 elements: upper triangle, row-major
     elements: list[float] = field(default_factory=list)
     frame: str = "UVW"
 
+    @property
+    def dim(self) -> int:
+        """Dimension of the matrix (3 for CARTP, 6 for CARTPV)."""
+        n = len(self.elements)
+        if n == 6:
+            return 3
+        if n == 21:
+            return 6
+        # Fall back: solve k(k+1)/2 = n
+        for k in (1, 2, 3, 4, 5, 6, 7, 8, 9):
+            if k * (k + 1) // 2 == n:
+                return k
+        return 0
+
     def as_matrix(self) -> np.ndarray:
-        m = np.zeros((6, 6), dtype=np.float64)
+        """Return the full symmetric matrix at the OCM's native dimension."""
+        d = self.dim
+        if d == 0:
+            return np.zeros((6, 6), dtype=np.float64)
+        m = np.zeros((d, d), dtype=np.float64)
         idx = 0
-        for i in range(6):
-            for j in range(i, 6):
+        for i in range(d):
+            for j in range(i + 1):
                 if idx < len(self.elements):
                     m[i, j] = self.elements[idx]
                     m[j, i] = self.elements[idx]
                     idx += 1
         return m
+
+    def as_3x3_position(self) -> np.ndarray:
+        """Return just the 3x3 position-position covariance block (always 3x3)."""
+        m = self.as_matrix()
+        if m.shape[0] >= 3:
+            return m[:3, :3]
+        return np.zeros((3, 3), dtype=np.float64)
 
 
 @dataclass
@@ -187,16 +219,34 @@ def _parse_kvn_line(line: str) -> tuple[str, str] | None:
 
 
 def parse_ocm_text(text: str, *, source_file: str | None = None) -> OCM:
-    """Parse OCM-formatted text in KVN style.
+    """Parse OCM-formatted text in KVN style (CCSDS 502.0-B-3).
 
-    This implementation is intentionally tolerant. We extract the fields we need
-    for conjunction screening; we don't fail on unrecognized fields. If you
-    encounter an OCM file that this parser doesn't handle, please open an issue.
+    Sections recognized: META, TRAJ (orbital data), PHYS, COV, PERT, OD.
+    Data rows in TRAJ and COV are: <ISO-datetime> <floats...>.
+    Tolerant of unknown fields (stored in `extras`).
     """
     ocm = OCM(object_designator="UNKNOWN", source_file=source_file)
-    state: str = "META"  # META | ORB | COV
+    state: str = "META"  # META | TRAJ | COV | PHYS | PERT | OD
     current_cov_epoch: datetime | None = None
     current_cov_elements: list[float] = []
+
+    # Section delimiters present in CCSDS OCM 502.0-B-3
+    section_starts = {
+        "META_START": "META", "META_BLOCK_START": "META",
+        "TRAJ_START": "TRAJ", "ORB_START": "TRAJ", "ORB_BLOCK_START": "TRAJ",
+        "COV_START": "COV", "COV_BLOCK_START": "COV",
+        "PHYS_START": "PHYS",
+        "PERT_START": "PERT",
+        "OD_START": "OD",
+    }
+    section_stops = {
+        "META_STOP", "META_BLOCK_END",
+        "TRAJ_STOP", "ORB_STOP", "ORB_BLOCK_END",
+        "COV_STOP", "COV_BLOCK_END",
+        "PHYS_STOP",
+        "PERT_STOP",
+        "OD_STOP",
+    }
 
     for raw_line in text.splitlines():
         line = raw_line.strip()
@@ -204,24 +254,13 @@ def parse_ocm_text(text: str, *, source_file: str | None = None) -> OCM:
             continue
 
         # Section delimiters
-        if line in ("META_START", "META_BLOCK_START"):
-            state = "META"
-            continue
-        if line in ("META_STOP", "META_BLOCK_END"):
-            continue
-        if line in ("ORB_START", "ORB_BLOCK_START"):
-            state = "ORB"
-            continue
-        if line in ("ORB_STOP", "ORB_BLOCK_END"):
-            state = "META"
-            continue
-        if line in ("COV_START", "COV_BLOCK_START"):
-            state = "COV"
-            current_cov_epoch = None
-            current_cov_elements = []
-            continue
-        if line in ("COV_STOP", "COV_BLOCK_END"):
-            if current_cov_epoch is not None and current_cov_elements:
+        if line in section_starts:
+            # Flush a pending covariance row before transitioning
+            if (
+                state == "COV"
+                and current_cov_epoch is not None
+                and current_cov_elements
+            ):
                 ocm.covariances.append(
                     OCMCovariance(
                         epoch=current_cov_epoch,
@@ -229,6 +268,25 @@ def parse_ocm_text(text: str, *, source_file: str | None = None) -> OCM:
                         frame=ocm.extras.get("COV_REF_FRAME", "UVW"),
                     )
                 )
+                current_cov_epoch = None
+                current_cov_elements = []
+            state = section_starts[line]
+            continue
+        if line in section_stops:
+            if (
+                state == "COV"
+                and current_cov_epoch is not None
+                and current_cov_elements
+            ):
+                ocm.covariances.append(
+                    OCMCovariance(
+                        epoch=current_cov_epoch,
+                        elements=current_cov_elements,
+                        frame=ocm.extras.get("COV_REF_FRAME", "UVW"),
+                    )
+                )
+                current_cov_epoch = None
+                current_cov_elements = []
             state = "META"
             continue
 
@@ -238,43 +296,43 @@ def parse_ocm_text(text: str, *, source_file: str | None = None) -> OCM:
             _apply_keyvalue(ocm, key, value)
             continue
 
-        # Not a KVN line — could be an ORB or COV data row
-        if state == "ORB":
+        # Data rows in TRAJ or COV sections
+        if state == "TRAJ":
             _try_parse_orb_row(ocm, line)
         elif state == "COV":
-            current_cov_epoch, current_cov_elements = _try_parse_cov_row(
-                line, current_cov_epoch, current_cov_elements
-            )
-            # If we collected 21 elements, that's a complete 6x6 upper triangle
-            if len(current_cov_elements) >= 21 and current_cov_epoch is not None:
-                ocm.covariances.append(
-                    OCMCovariance(
-                        epoch=current_cov_epoch,
-                        elements=current_cov_elements[:21],
-                        frame=ocm.extras.get("COV_REF_FRAME", "UVW"),
-                    )
-                )
-                current_cov_epoch = None
-                current_cov_elements = []
+            # Each row in COV starts with an epoch and is self-contained:
+            # for CARTP+LTM, 6 floats (3x3 position cov, lower triangle)
+            # for CARTPV+LTM, 21 floats (6x6 pos-vel cov, lower triangle)
+            parts = line.split()
+            if len(parts) >= 2:
+                try:
+                    epoch = parse_ocm_epoch(parts[0])
+                    elements = [float(p) for p in parts[1:]]
+                    if elements:
+                        ocm.covariances.append(
+                            OCMCovariance(
+                                epoch=epoch,
+                                elements=elements,
+                                frame=ocm.extras.get("COV_REF_FRAME", "UVW"),
+                            )
+                        )
+                except ValueError:
+                    # not a data row (could be section header)
+                    pass
 
     return ocm
 
 
 def _apply_keyvalue(ocm: OCM, key: str, value: str) -> None:
-    """Apply a KVN field to the OCM being built."""
-    if key == "OBJECT_DESIGNATOR" or key == "OBJECT_ID":
+    """Apply a KVN field to the OCM being built (CCSDS 502.0-B-3 names)."""
+    if key in ("OBJECT_DESIGNATOR", "OBJECT_ID"):
         ocm.object_designator = value
     elif key == "OBJECT_NAME":
         ocm.object_name = value
-    elif key in ("REF_FRAME", "CENTER_NAME"):
-        if key == "REF_FRAME":
-            ocm.ref_frame = value
-        else:
-            ocm.extras[key] = value
+    elif key in ("REF_FRAME", "TRAJ_REF_FRAME"):
+        ocm.ref_frame = value
     elif key == "TIME_SYSTEM":
         ocm.time_system = value
-    elif key == "EPOCH_TZERO":
-        ocm.extras[key] = value
     elif key == "OD_EPOCH":
         try:
             ocm.od_epoch = parse_ocm_epoch(value)
@@ -291,6 +349,7 @@ def _apply_keyvalue(ocm: OCM, key: str, value: str) -> None:
         except ValueError:
             ocm.extras[key] = value
     else:
+        # Includes EPOCH_TZERO, COV_REF_FRAME, COV_TYPE, COV_ORDERING, etc.
         ocm.extras[key] = value
 
 
