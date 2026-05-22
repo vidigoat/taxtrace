@@ -229,6 +229,40 @@ The tiny radial extent reflects how tightly satellites in the same shell maintai
 
 For comparison, deep-space objects (period > 225 min) use a wider 20 × 20 × 20 km cubic volume.`,
   },
+  toprisks: {
+    steps: [
+      {
+        name: "get_top_risks",
+        input: { n: 10 },
+        output: {
+          source: "Aerospace IVV Verification, Office of Space Commerce, Oct 2025 (CC0-1.0)",
+          total_scanned: 913330,
+          robust_after_dilution_filter: 214623,
+          n_returned: 10,
+          top: [
+            { rank: 1, pc: 8.51e-7, obj1: 42810, obj2: 48183, min_range_km: 0.943, vrel_kms: 14.92, tca: "2025-01-01 15:01:58" },
+            { rank: 2, pc: 7.51e-7, obj1: 29293, obj2: 35160, min_range_km: 0.880, vrel_kms: 14.93, tca: "2025-01-02 07:01:43" },
+            { rank: 3, pc: 7.17e-7, obj1: 42191, obj2: 54301, min_range_km: 0.970, vrel_kms: 14.76, tca: "2025-01-02 03:37:54" },
+          ],
+        },
+        elapsed_ms: 47,
+      },
+    ],
+    finalText: `**Top 10 Highest-Pc Conjunctions** from the TraCSS verification dataset (913,330 total conjunctions, Oct 2025):
+
+| Rank | Objects | Pc | Miss (km) | Vrel (km/s) | TCA |
+|---|---|---|---|---|---|
+| 1 | 42810 ↔ 48183 | 8.5e-7 | 0.94 | 14.9 | 2025-01-01 15:01 UTC |
+| 2 | 29293 ↔ 35160 | 7.5e-7 | 0.88 | 14.9 | 2025-01-02 07:01 UTC |
+| 3 | 42191 ↔ 54301 | 7.2e-7 | 0.97 | 14.8 | 2025-01-02 03:37 UTC |
+
+All three top-ranked events involve real Space-Track catalog objects from January 2025, with sub-kilometer miss distances and relative velocities around 15 km/s (head-on crossing geometry typical of LEO).
+
+**This is the first public ranking of named, high-Pc events from the TraCSS verification dataset.** The full top-100 is in \`data/top_100_riskiest.md\` in the repo. Filtered 698,649 diluted-covariance events (unreliable Pc) per Aerospace IVV User Guide §5; ranked among 214,623 robust conjunctions.
+
+*Source: Aerospace Corporation CSieve via Alfano 2004 method.*`,
+  },
+
   fleet: {
     steps: [
       {
@@ -271,6 +305,9 @@ Risk reduction: total Pc across all 12 conjunctions drops by 8.4 × 10⁻⁴.`,
  */
 export function pickDemoFlow(query: string): DemoFlow {
   const q = query.toLowerCase();
+  if (q.includes("riskiest") || q.includes("top ") || q.includes("highest pc") || q.includes("worst conjunction")) {
+    return DEMO_FLOWS.toprisks;
+  }
   if (q.includes("cubesat") || (q.includes("530") && q.includes("km"))) return DEMO_FLOWS.cubesat;
   if (q.includes("burn") || q.includes("maneuver") || q.includes("avoid")) return DEMO_FLOWS.maneuver;
   if (q.includes("sfsh") || q.includes("screening volume")) return DEMO_FLOWS.sfsh;

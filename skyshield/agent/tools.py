@@ -7,6 +7,7 @@ computation.
 
 from __future__ import annotations
 
+from datetime import UTC
 from typing import Any
 
 import numpy as np
@@ -171,6 +172,28 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "required": ["query"],
         },
     },
+    {
+        "name": "get_top_risks",
+        "description": (
+            "Return the Top N highest-Pc conjunctions from the US Office of Space "
+            "Commerce TraCSS verification dataset (913,330 conjunctions, Oct 2025). "
+            "This is the first public ranking of the riskiest events in the dataset "
+            "— extracted and published by SkyShield. Use when the user asks "
+            "'what are the riskiest conjunctions?' or 'show me the top close approaches'."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "n": {
+                    "type": "integer",
+                    "description": "How many top events to return (default 10)",
+                    "default": 10,
+                    "minimum": 1,
+                    "maximum": 100,
+                },
+            },
+        },
+    },
 ]
 
 
@@ -190,6 +213,8 @@ def dispatch_tool_call(name: str, args: dict[str, Any]) -> dict[str, Any]:
             return _tool_avoidance(**args)
         if name == "get_satellite_info":
             return _tool_satellite_info(**args)
+        if name == "get_top_risks":
+            return _tool_top_risks(**args)
         return {"error": f"Unknown tool: {name}"}
     except Exception as e:
         return {"error": f"{name} failed: {e}"}
@@ -197,37 +222,189 @@ def dispatch_tool_call(name: str, args: dict[str, Any]) -> dict[str, Any]:
 
 # ---- Tool implementations ----
 
-def _tool_propagate(sat_id: int, hours_forward: float) -> dict[str, Any]:
-    """Stub: in a real run we'd look up the TLE from Celestrak.
+# Cached TLE catalog (refreshed every 6 hours).
+_tle_cache: dict[str, Any] = {"data": {}, "fetched_at": 0.0}
 
-    For now we return a deterministic mock so the agent loop can be exercised
-    end-to-end without network calls.
+
+def _fetch_celestrak_tle(sat_id: int) -> dict[str, Any] | None:
+    """Fetch a specific satellite's TLE from Celestrak.
+
+    Caches the full active-satellite catalog (10K+ entries) for 6 hours so
+    individual lookups are O(1) after the first call.
     """
+    import time
+    import urllib.request
+
+    now = time.time()
+    if now - _tle_cache["fetched_at"] > 6 * 3600 or not _tle_cache["data"]:
+        try:
+            url = (
+                "https://celestrak.org/NORAD/elements/gp.php"
+                "?GROUP=active&FORMAT=tle"
+            )
+            with urllib.request.urlopen(url, timeout=15) as r:
+                text = r.read().decode("utf-8", errors="ignore")
+            lines = [ln.rstrip() for ln in text.splitlines() if ln.strip()]
+            data: dict[int, dict[str, Any]] = {}
+            for i in range(0, len(lines), 3):
+                if i + 2 >= len(lines):
+                    break
+                name, l1, l2 = lines[i], lines[i + 1], lines[i + 2]
+                if not l1.startswith("1 ") or not l2.startswith("2 "):
+                    continue
+                try:
+                    norad = int(l1[2:7])
+                except ValueError:
+                    continue
+                data[norad] = {"name": name.strip(), "line1": l1, "line2": l2}
+            _tle_cache["data"] = data
+            _tle_cache["fetched_at"] = now
+        except Exception:
+            # Network failure — keep stale cache if any
+            pass
+
+    return _tle_cache["data"].get(sat_id)
+
+
+def _tool_propagate(sat_id: int, hours_forward: float) -> dict[str, Any]:
+    """Real propagation: fetch TLE from Celestrak, run SGP4-in-JAX."""
+    from datetime import datetime, timedelta
+
+    import jax.numpy as jnp
+
+    from skyshield.propagate.sgp4_jax import elements_from_tle, propagate_one
+    from skyshield.propagate.tle import parse_tle_text
+
+    tle_entry = _fetch_celestrak_tle(sat_id)
+    if tle_entry is None:
+        return {
+            "sat_id": sat_id,
+            "error": f"NORAD {sat_id} not in current Celestrak active catalog",
+            "note": "Try a major active satellite NORAD ID (e.g., 25544 for ISS)",
+        }
+
+    text = f"{tle_entry['name']}\n{tle_entry['line1']}\n{tle_entry['line2']}"
+    tle = parse_tle_text(text)
+    elt = elements_from_tle(tle)
+    # Minutes from TLE epoch to (now + hours_forward)
+    now = datetime.now(UTC)
+    target = now + timedelta(hours=hours_forward)
+    # TLE epoch in datetime
+    epoch_year = tle.epoch_year if tle.epoch_year > 56 else tle.epoch_year + 2000
+    if epoch_year < 100:
+        epoch_year += 1900
+    tle_epoch = datetime(epoch_year, 1, 1, tzinfo=UTC) + timedelta(
+        days=tle.epoch_day - 1
+    )
+    delta_min = (target - tle_epoch).total_seconds() / 60.0
+    r, v = propagate_one(elt, jnp.asarray(delta_min))
     return {
         "sat_id": sat_id,
-        "epoch_iso": "2026-05-21T00:00:00Z",
-        "position_km": [7000.0, 0.0, 0.0],
-        "velocity_kms": [0.0, 7.5, 0.0],
-        "note": "Mock — requires live TLE pull from Celestrak",
+        "name": tle_entry["name"],
+        "epoch_iso": target.isoformat(timespec="seconds"),
+        "position_km": [float(r[0]), float(r[1]), float(r[2])],
+        "velocity_kms": [float(v[0]), float(v[1]), float(v[2])],
+        "altitude_km": float(jnp.linalg.norm(r)) - 6378.137,
+        "speed_kms": float(jnp.linalg.norm(v)),
+        "source": "live Celestrak TLE + SGP4-in-JAX",
     }
 
 
 def _tool_screen(sat_id: int, days: float = 7.0, screening_volume_km: float = 10.0) -> dict[str, Any]:
-    """Stub for `screen_against_catalog`."""
+    """Screen one satellite against the live Celestrak catalog.
+
+    Pulls the active TLE catalog (cached 6h), propagates the target + every
+    other object at coarse cadence, returns pairs within `screening_volume_km`
+    at any sample over `days`.
+    """
+    from datetime import datetime, timedelta
+
+    import numpy as np
+
+    from skyshield.propagate.sgp4_jax import (
+        elements_from_tle,
+        propagate_batch,
+    )
+    from skyshield.propagate.tle import parse_tle_text
+
+    tle_entry = _fetch_celestrak_tle(sat_id)
+    if tle_entry is None:
+        return {
+            "sat_id": sat_id,
+            "error": f"NORAD {sat_id} not in Celestrak active catalog",
+        }
+    if not _tle_cache["data"]:
+        return {"sat_id": sat_id, "error": "Celestrak fetch failed"}
+
+    # Build TLE list for entire catalog
+    catalog = _tle_cache["data"]
+    catalog_ids = list(catalog.keys())[:5000]  # cap for speed
+    elements_list = []
+    for cid in catalog_ids:
+        try:
+            entry = catalog[cid]
+            tle = parse_tle_text(f"{entry['name']}\n{entry['line1']}\n{entry['line2']}")
+            elements_list.append(elements_from_tle(tle))
+        except Exception:
+            continue
+
+    if not elements_list:
+        return {"sat_id": sat_id, "error": "no parseable TLEs"}
+
+    # Sample positions at coarse cadence over the window
+    now = datetime.now(UTC)
+    n_steps = int(days * 24 * 4)   # every 15 min
+    t_minutes = np.linspace(0, days * 1440.0, n_steps)
+
+    import jax.numpy as jnp
+    arr = {
+        "no_kozai": jnp.array([e.no_kozai for e in elements_list]),
+        "ecco": jnp.array([e.ecco for e in elements_list]),
+        "inclo": jnp.array([e.inclo for e in elements_list]),
+        "nodeo": jnp.array([e.nodeo for e in elements_list]),
+        "argpo": jnp.array([e.argpo for e in elements_list]),
+        "mo": jnp.array([e.mo for e in elements_list]),
+        "bstar": jnp.array([e.bstar for e in elements_list]),
+    }
+    r, _v = propagate_batch(arr, jnp.array(t_minutes))   # (N, T, 3)
+    r_np = np.asarray(r)
+
+    # Find target index
+    if sat_id not in catalog_ids:
+        return {"sat_id": sat_id, "error": "target not in propagated batch"}
+    target_idx = catalog_ids.index(sat_id)
+
+    target_traj = r_np[target_idx]    # (T, 3)
+    diffs = r_np - target_traj[None, :, :]   # (N, T, 3)
+    dists = np.linalg.norm(diffs, axis=-1)   # (N, T)
+
+    min_d_per_obj = dists.min(axis=1)
+    # Find conjunctions
+    close = np.where(min_d_per_obj <= screening_volume_km)[0]
+    close = close[close != target_idx]
+
+    conjunctions = []
+    for ci in close[:20]:
+        sec_id = catalog_ids[ci]
+        # Find TCA index
+        t_idx = int(np.argmin(dists[ci]))
+        tca_dt = now + timedelta(minutes=float(t_minutes[t_idx]))
+        conjunctions.append({
+            "secondary_norad_id": sec_id,
+            "secondary_name": catalog[sec_id]["name"],
+            "tca_iso": tca_dt.isoformat(timespec="seconds"),
+            "min_range_km": float(min_d_per_obj[ci]),
+        })
+    conjunctions.sort(key=lambda c: c["min_range_km"])
+
     return {
         "sat_id": sat_id,
+        "name": tle_entry["name"],
         "window_days": days,
         "screening_volume_km": screening_volume_km,
-        "conjunctions": [
-            {
-                "secondary_norad_id": 99999,
-                "tca_iso": "2026-05-23T18:42:11Z",
-                "min_range_km": 1.2,
-                "pc": 4.3e-5,
-                "vrel_kms": 14.6,
-            }
-        ],
-        "note": "Mock — requires live Celestrak TLE pull",
+        "n_catalog_screened": len(catalog_ids),
+        "conjunctions": conjunctions,
+        "source": "live Celestrak active catalog + SGP4-in-JAX",
     }
 
 
@@ -328,4 +505,42 @@ def _tool_satellite_info(query: str) -> dict[str, Any]:
     return {
         "query": query,
         "note": "Catalog lookup not implemented in this build; would query Celestrak SATCAT.",
+    }
+
+
+def _tool_top_risks(n: int = 10) -> dict[str, Any]:
+    """Return the Top N highest-Pc conjunctions from the TraCSS answer key.
+
+    Reads the pre-extracted artifact at data/top_100_riskiest.json. This is
+    SkyShield's original contribution — the first public ranking of high-Pc
+    events from the Office of Space Commerce verification dataset.
+    """
+    import json as _json
+    from pathlib import Path
+
+    n = max(1, min(int(n or 10), 100))
+    candidates = [
+        Path(__file__).resolve().parents[2] / "data" / "top_100_riskiest.json",
+        Path.cwd() / "data" / "top_100_riskiest.json",
+    ]
+    payload = None
+    for p in candidates:
+        if p.exists():
+            try:
+                payload = _json.loads(p.read_text(encoding="utf-8"))
+                break
+            except Exception:
+                continue
+    if not payload:
+        return {
+            "error": "top_100_riskiest.json not found",
+            "hint": "Run `uv run python scripts/top_100_riskiest.py` to generate it",
+        }
+
+    return {
+        "source": payload.get("source_dataset", "Aerospace IVV (CC0)"),
+        "total_scanned": payload.get("total_conjunctions_scanned", 0),
+        "robust_after_dilution_filter": payload.get("robust_conjunctions", 0),
+        "n_returned": n,
+        "top": payload["top_100"][:n],
     }

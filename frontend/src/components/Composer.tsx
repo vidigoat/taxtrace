@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
 
 const EXAMPLE_PROMPTS = [
+  "Show me the top 10 riskiest conjunctions in the TraCSS dataset",
   "Is the ISS at risk this week?",
   "My CubeSat at 530 km, 53° inclination — collision risk for the next 30 days?",
   "Find the minimum-Δv avoidance burn for a 100 m close approach",
-  "How does the SFSH screening volume work for LEO?",
   "Plan a coordinated maneuver for my fleet of 5 satellites",
 ];
 
