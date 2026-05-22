@@ -1,32 +1,32 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-.venv/
-venv/
-env/
-*.egg-info/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-.hypothesis/
+# Node / Bun / TypeScript
+node_modules/
+.next/
+.turbo/
+dist/
+build/
+*.tsbuildinfo
+.bun/
+bun.lockb.bak
 
-# Data — gitignored, downloaded separately
-data/tracss/
-data/tle/
-data/fixtures_raw/
-external/
-*.tar.gz
-*.csv.gz
-
-# Secrets
+# Env / secrets
 .env
 .env.local
+.env.*.local
 *.key
+*.pem
+
+# Data — ingested, never committed
+data/raw/
+data/parquet/
+data/snapshots/
+*.csv
+*.csv.gz
+*.parquet
+*.tar.gz
+
+# Tests
+coverage/
+.vitest-cache/
 
 # OS
 .DS_Store
@@ -38,7 +38,11 @@ Thumbs.db
 *.swp
 *.swo
 
-# Build artifacts
-dist/
-build/
-node_modules/
+# Logs
+*.log
+logs/
+
+# Misc
+.cache/
+.tmp/
+tmp/
