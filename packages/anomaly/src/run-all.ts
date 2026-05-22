@@ -13,9 +13,22 @@ export interface RunAllResult {
   totalElapsedMs: number;
 }
 
-/** Run all enabled detectors and insert findings into the DB. */
+/**
+ * Run all enabled detectors and replace findings in the DB.
+ *
+ * Idempotent by design: clears the anomalies table before inserting fresh
+ * findings, so re-running this multiple times produces N rows, not N×runs.
+ * (Earlier version inserted on every run, creating duplicates.)
+ *
+ * In production with multiple detector versions running concurrently, swap
+ * this for `delete where detector_version IN (versions touched this run)` —
+ * but at our scale, full-clear is simpler and unambiguous.
+ */
 export async function runAllDetectors(db: DB): Promise<RunAllResult> {
   const start = Date.now();
+
+  // Clear stale anomalies before re-detecting so re-runs are idempotent.
+  await db.delete(anomaliesTable);
 
   const [soleSource, repeatAwardee, priceSpike, timingCorrelation] = await Promise.all([
     detectSoleSource(db),
