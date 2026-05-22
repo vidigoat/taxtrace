@@ -18,7 +18,7 @@ export function Header() {
           <Link to="/anomalies" className="hover:underline">Anomalies</Link>
           <Link to="/about" className="hover:underline hidden sm:inline">About</Link>
           <a
-            href="https://github.com/vidigoat/skyshield-ai"
+            href="https://github.com/vidigoat/taxtrace"
             target="_blank"
             rel="noreferrer"
             className="text-neutral-500 hover:text-neutral-900"

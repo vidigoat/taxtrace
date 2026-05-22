@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
 import { Providers } from "@/components/Providers";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -34,7 +34,7 @@ function NotFound() {
     <main className="flex-1 max-w-2xl mx-auto w-full px-4 sm:px-8 py-12 text-center">
       <h1 className="text-3xl font-bold mb-4">Page not found</h1>
       <p className="text-neutral-600">
-        Try searching from the <a href="/" className="underline">homepage</a>.
+        Try searching from the <Link to="/" className="underline">homepage</Link>.
       </p>
     </main>
   );
