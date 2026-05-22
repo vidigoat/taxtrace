@@ -1,0 +1,42 @@
+{
+  "name": "taxtrace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open public spending forensics. Every federal dollar. Every connection. Public.",
+  "license": "MIT",
+  "author": "Vidit Patankar",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "benchmarks"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "biome check .",
+    "format": "biome format . --write",
+    "test": "turbo run test",
+    "db:generate": "cd packages/db && bun run generate",
+    "db:push": "cd packages/db && bun run push",
+    "db:seed": "cd packages/db && bun run seed",
+    "scrape:usa": "cd apps/worker && bun run scrape:usa",
+    "scrape:fec": "cd apps/worker && bun run scrape:fec",
+    "etl:daily": "cd apps/worker && bun run etl:daily",
+    "bench": "turbo run bench"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/bun": "latest",
+    "@types/node": "^22.10.0",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "bun": ">=1.2.0"
+  },
+  "packageManager": "bun@1.2.0",
+  "trustedDependencies": [
+    "@biomejs/biome"
+  ]
+}

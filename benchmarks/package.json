@@ -1,0 +1,13 @@
+{
+  "name": "@taxtrace/benchmarks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench": "bun bench.ts"
+  },
+  "dependencies": {
+    "@taxtrace/anomaly": "workspace:*",
+    "@taxtrace/db": "workspace:*"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@taxtrace/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "start": "bun src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "scrape:usa": "bun src/jobs/scrape-usaspending.ts",
+    "scrape:fec": "bun src/jobs/scrape-fec.ts",
+    "etl:daily": "bun src/jobs/etl-daily.ts",
+    "build-graph": "bun src/jobs/build-graph.ts",
+    "detect-anomalies": "bun src/jobs/detect-anomalies.ts"
+  },
+  "dependencies": {
+    "@taxtrace/anomaly": "workspace:*",
+    "@taxtrace/db": "workspace:*",
+    "@taxtrace/scrapers": "workspace:*",
+    "@taxtrace/types": "workspace:*",
+    "@taxtrace/utils": "workspace:*",
+    "drizzle-orm": "^0.36.4"
+  },
+  "devDependencies": { "typescript": "^5.7.0" }
+}
