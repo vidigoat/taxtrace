@@ -17,9 +17,19 @@ export function formatNumber(n: number | null | undefined): string {
   return n.toLocaleString("en-US");
 }
 
-export function formatDate(d: string | Date | null | undefined): string {
-  if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
+export function formatDate(d: string | number | Date | null | undefined): string {
+  if (d == null || d === "") return "—";
+  let date: Date;
+  if (d instanceof Date) {
+    date = d;
+  } else if (typeof d === "number") {
+    // SQLite + Drizzle `mode: 'timestamp'` returns Unix seconds.
+    // JS Date constructor wants milliseconds. Anything <1e12 is seconds → ×1000.
+    date = new Date(d < 1e12 ? d * 1000 : d);
+  } else {
+    date = new Date(d);
+  }
+  if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
