@@ -6,165 +6,107 @@ Read this before making changes.
 ## Project identity
 
 **TaxTrace** — open public spending forensics for US federal government.
-TypeScript everywhere. Bun + Hono backend, Next.js 16 + React 19 frontend,
-PostgreSQL 17 + Apache AGE for graph storage. Built solo in 4 weeks by
-Vidit Patankar (14, Gurgaon) in response to Elon Musk's 2026-05-21 SpaceXAI
-hiring tweet.
+Frontend: https://taxtrace-three.vercel.app. API: AWS Lambda + API Gateway.
+Built solo by Vidit Patankar (14, Gurgaon) in response to Elon Musk's
+2026-05-21 SpaceXAI hiring tweet.
+
+---
 
 ## ⚠️ HARD RULES — read these first, never break them
 
-1. **🚨 ABSOLUTE STACK CONSTRAINT — TypeScript + React + Vite only.**
-   - **TypeScript:** the only programming language in this repo. No Python,
-     Go, Rust, Ruby, Java, anything else. Period.
-   - **React:** the only UI framework. **No Next.js. No Remix. No SvelteKit.
-     No Solid. No Astro. No Angular. No Vue.** Plain React + React Router
-     for routing. **Vidit explicitly does not want Next.js. If you reach for
-     it, stop and use Vite + React instead.**
-   - **Vite:** the only build tool for the frontend. Not Webpack, not
-     Turbopack, not Parcel, not esbuild standalone, not Rollup standalone
-     (Vite uses Rollup under the hood — that's fine).
-   - **Bun:** the JavaScript runtime for backend + scripts + tests. Not Node.
-   - **The only exception:** SQL migrations (raw SQL is fine).
-   - **If a tool you're tempted to use isn't in the table below, stop and
-     ask before adopting it.**
+### 1. Think before coding
 
-   | Layer | Tool — no substitutes |
-   |---|---|
-   | Language | TypeScript (strict mode) |
-   | Frontend framework | React + React Router |
-   | Frontend build | Vite |
-   | Backend framework | Hono |
-   | Backend runtime | Bun |
-   | Database | PostgreSQL (Apache AGE for graph) — SQLite for local dev |
-   | ORM | Drizzle |
-   | Validation | Zod |
-   | Styling | Tailwind v4 |
-   | UI components | shadcn/ui (or hand-rolled — never Material-UI / Chakra) |
-   | Charts | Recharts |
-   | Graph viz | Cytoscape.js |
-   | Data fetching | TanStack Query |
-   | Tests | Bun test (built-in) + Playwright for E2E |
-   | Lint/format | Biome |
-   | Deploy (frontend) | Vercel |
-   | Deploy (backend) | Railway or Modal |
+Don't assume. Don't hide confusion. Surface tradeoffs.
 
-2. **One commit per logical concern.** No mega-commits. Use Conventional
-   Commits (`feat(scope):`, `fix(scope):`, `chore(scope):`, etc).
+**Before implementing anything:**
 
-3. **No fake data, ever.** Every number in the UI must trace to a source
-   row in the database. Anomaly detection results must link to evidence.
+- **State your assumptions explicitly.** If uncertain, ask.
+- **If multiple interpretations exist, present them — don't pick silently.**
+- **If a simpler approach exists, say so.** Push back when warranted.
+- **If something is unclear, stop.** Name what's confusing. Ask.
 
-4. **No untyped boundaries.** Every API endpoint has a Zod schema.
-   Every database query goes through Drizzle with inferred types.
+Bad: silently picking Next.js when the user said "React" because you
+defaulted to a convention. Good: "you said React only — I see two paths,
+Vite + React Router (smaller, simpler) vs Next.js (more conventions, more
+opinionated). I'd pick Vite. OK to proceed?"
 
-5. **Apolitical framing.** TaxTrace is a transparency tool. Anyone (any side)
-   can audit. No editorial commentary in the UI.
+### 2. Goal-driven execution
 
-## Stack (canonical)
+Define success criteria. Loop until verified.
 
-- **Runtime**: Bun 1.2+ everywhere
-- **Backend framework**: Hono (lightweight, runs on Bun + Cloudflare Workers)
-- **Frontend framework**: Next.js 16 (App Router, server components, ISR)
-- **UI**: React 19 + TypeScript strict
-- **Styling**: Tailwind v4 + shadcn/ui
-- **Database**: PostgreSQL 17 on Neon + Apache AGE extension for graph
-- **ORM**: Drizzle (TypeScript-first)
-- **Search**: Meilisearch (sub-50ms full-text)
-- **Network viz**: Cytoscape.js (WebGL, handles 50K+ nodes)
-- **Data fetching**: TanStack Query
-- **ETL**: nodejs-polars (Rust core, TS bindings)
-- **Job queue**: BullMQ on Redis (Upstash)
-- **Validation**: Zod
-- **Tests**: Bun's built-in test runner + Playwright for E2E
-- **Linting**: Biome (faster than ESLint, also formats)
+**Transform tasks into verifiable goals:**
 
-## Workspace structure
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+- "Deploy to AWS" → "End-to-end: frontend hits live API, returns real data, HTTP 200"
+
+**For multi-step tasks, state a brief plan first:**
 
 ```
-taxtrace/
-├── packages/        Shared TS packages (db, types, scrapers, etl, anomaly, ...)
-├── apps/
-│   ├── api/         Hono backend
-│   ├── worker/      BullMQ worker
-│   └── web/         Next.js frontend
-├── infrastructure/  Docker + Railway + Vercel configs
-└── tests/           Cross-package integration + E2E
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
 ```
 
-## Useful commands
+**Strong success criteria let you loop independently.** Weak criteria
+("make it work") require constant clarification. If a step lacks a
+verification check, you don't know when it's done.
 
-```bash
-# Install everything
-bun install
+### 3. Absolute stack constraint — TypeScript + React + Vite only
 
-# Dev (all apps + workers concurrently via Turbo)
-bun run dev
+| Layer | Tool — no substitutes |
+|---|---|
+| Language | TypeScript (strict mode) |
+| Frontend framework | **React + React Router** (never Next.js, Remix, Solid, Astro, Svelte, Vue, Angular) |
+| Frontend build | **Vite** (never Webpack, Turbopack, Parcel, esbuild standalone) |
+| Backend framework | Hono |
+| Backend runtime | Bun (dev/scripts) or Node 22 on Lambda (production) |
+| Database | SQLite (bundled in Lambda) or Postgres (when scale demands) |
+| ORM | Drizzle |
+| Validation | Zod |
+| Styling | Tailwind v4 |
+| UI components | shadcn/ui or hand-rolled (never Material-UI, Chakra) |
+| Charts | Recharts |
+| Graph viz | Cytoscape.js |
+| Data fetching | TanStack Query |
+| Tests | Bun test + Playwright for E2E |
+| Lint/format | Biome |
+| Deploy (frontend) | Vercel |
+| Deploy (backend) | AWS Lambda + API Gateway HTTP API |
 
-# Type check
-bun run typecheck
+**The only exception:** raw SQL migrations.
 
-# Tests
-bun test
+If you're tempted to use something not on this list — **stop and ask**.
+Vidit explicitly does not want Next.js. If you reach for it, use Vite + React.
 
-# Lint + format
-bun run lint
+### 4. One commit per logical concern
 
-# Build for prod
-bun run build
+No mega-commits. Use Conventional Commits:
+`feat(scope):`, `fix(scope):`, `chore(scope):`, `refactor(scope):`,
+`docs(scope):`, `test(scope):`.
 
-# Database
-bun run db:generate    # Drizzle migrations from schema
-bun run db:migrate     # Apply migrations
-bun run db:studio      # Drizzle Studio UI
+### 5. No fake data, ever
 
-# Data ingestion
-bun run scrape:usa     # Pull USAspending
-bun run scrape:fec     # Pull FEC
-bun run etl:daily      # Full pipeline
-```
+Every number in the UI traces to a source row in the database.
+Anomaly detection results link to evidence (contract IDs, donation IDs).
+Demo/mock data only ever appears with an explicit `(demo)` label.
 
-## Things to avoid
+### 6. No untyped boundaries
 
-- Python or anything that compiles to a non-TS runtime
-- Pandas (use Polars), Prisma (use Drizzle), ElasticSearch (use Meilisearch),
-  ESLint (use Biome), Next.js Pages Router (use App Router)
-- Hardcoded data — every number comes from a real DB query
-- Editorializing — TaxTrace shows facts, lets users draw conclusions
-- Committing API keys, .env files, raw data CSVs
+Every API endpoint has a Zod schema. Every database query goes through
+Drizzle with inferred types. No `any`. No `as unknown as X` casts.
 
-## Data sources
+### 7. Apolitical framing
 
-| Source | Type | API |
-|---|---|---|
-| USAspending.gov | Contracts + grants | https://api.usaspending.gov/ |
-| FPDS | Federal procurement | bulk download |
-| SAM.gov | Entities | https://api.sam.gov/ |
-| OpenFEC | Donations | https://api.open.fec.gov/ |
-| OpenSecrets | Lobbying + industry | bulk data |
-| SEC EDGAR | Company filings | https://www.sec.gov/edgar/ |
-| DOGE.gov | Cancelled contracts | scrape |
-| Wikidata | Relationship facts | SPARQL endpoint |
+TaxTrace is a transparency tool. Anyone, any side, can audit. The UI
+shows facts, links evidence, lets users draw conclusions. No editorial
+commentary in code, copy, or commit messages.
+
+---
 
 ## Naming
 
-- Use Conventional Commits
 - Package names: `@taxtrace/*` (e.g. `@taxtrace/db`, `@taxtrace/types`)
-- Domain: `taxtrace.org` (target)
-- GitHub: `github.com/vidigoat/taxtrace` (target — rename pending)
-
-## Workflow
-
-### Adding a feature
-1. Update package(s)
-2. Add tests (`*.test.ts` siblings)
-3. Run `bun run typecheck && bun test`
-4. Commit with `feat(<scope>):`
-5. Push
-
-### Adding a data source
-1. New file in `packages/scrapers/`
-2. Schema in `packages/db/schema.ts`
-3. Drizzle migration
-4. Worker job in `apps/worker/src/jobs/`
-5. Daily cron entry
-6. Tests with fixture data
+- Conventional Commits in commit messages
+- Live URLs are tracked in README, not invented in commits
