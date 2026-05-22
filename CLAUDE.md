@@ -11,16 +11,52 @@ PostgreSQL 17 + Apache AGE for graph storage. Built solo in 4 weeks by
 Vidit Patankar (14, Gurgaon) in response to Elon Musk's 2026-05-21 SpaceXAI
 hiring tweet.
 
-## Hard rules
+## ⚠️ HARD RULES — read these first, never break them
 
-1. **TypeScript everywhere.** No Python. No Go. No Rust hand-written code.
-   The only exception: SQL migrations.
+1. **🚨 ABSOLUTE STACK CONSTRAINT — TypeScript + React + Vite only.**
+   - **TypeScript:** the only programming language in this repo. No Python,
+     Go, Rust, Ruby, Java, anything else. Period.
+   - **React:** the only UI framework. **No Next.js. No Remix. No SvelteKit.
+     No Solid. No Astro. No Angular. No Vue.** Plain React + React Router
+     for routing. **Vidit explicitly does not want Next.js. If you reach for
+     it, stop and use Vite + React instead.**
+   - **Vite:** the only build tool for the frontend. Not Webpack, not
+     Turbopack, not Parcel, not esbuild standalone, not Rollup standalone
+     (Vite uses Rollup under the hood — that's fine).
+   - **Bun:** the JavaScript runtime for backend + scripts + tests. Not Node.
+   - **The only exception:** SQL migrations (raw SQL is fine).
+   - **If a tool you're tempted to use isn't in the table below, stop and
+     ask before adopting it.**
+
+   | Layer | Tool — no substitutes |
+   |---|---|
+   | Language | TypeScript (strict mode) |
+   | Frontend framework | React + React Router |
+   | Frontend build | Vite |
+   | Backend framework | Hono |
+   | Backend runtime | Bun |
+   | Database | PostgreSQL (Apache AGE for graph) — SQLite for local dev |
+   | ORM | Drizzle |
+   | Validation | Zod |
+   | Styling | Tailwind v4 |
+   | UI components | shadcn/ui (or hand-rolled — never Material-UI / Chakra) |
+   | Charts | Recharts |
+   | Graph viz | Cytoscape.js |
+   | Data fetching | TanStack Query |
+   | Tests | Bun test (built-in) + Playwright for E2E |
+   | Lint/format | Biome |
+   | Deploy (frontend) | Vercel |
+   | Deploy (backend) | Railway or Modal |
+
 2. **One commit per logical concern.** No mega-commits. Use Conventional
    Commits (`feat(scope):`, `fix(scope):`, `chore(scope):`, etc).
+
 3. **No fake data, ever.** Every number in the UI must trace to a source
    row in the database. Anomaly detection results must link to evidence.
+
 4. **No untyped boundaries.** Every API endpoint has a Zod schema.
    Every database query goes through Drizzle with inferred types.
+
 5. **Apolitical framing.** TaxTrace is a transparency tool. Anyone (any side)
    can audit. No editorial commentary in the UI.
 

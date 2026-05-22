@@ -1,17 +1,15 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
 export function Search() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [q, setQ] = useState("");
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (q.trim()) router.push(`/search?q=${encodeURIComponent(q.trim())}`);
+        if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`);
       }}
       className="relative max-w-2xl mx-auto"
     >

@@ -1,7 +1,5 @@
-"use client";
-
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import { fetchAnomalies } from "@/lib/api";
 import { formatMoney, formatDate } from "@/lib/format";
 
@@ -74,7 +72,7 @@ export function AnomaliesFeed() {
             </div>
             <h3 className="font-semibold mb-1">
               {row.primaryEntity ? (
-                <Link href={`/entity/${row.primaryEntity.id}`} className="hover:underline">
+                <Link to={`/entity/${row.primaryEntity.id}`} className="hover:underline">
                   {a.title}
                 </Link>
               ) : (

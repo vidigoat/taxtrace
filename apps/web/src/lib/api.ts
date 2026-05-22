@@ -1,10 +1,11 @@
 /**
  * Type-safe client for the TaxTrace API.
  *
- * Reads VITE_API_URL or NEXT_PUBLIC_API_URL. Falls back to localhost:8787.
+ * Reads VITE_API_URL. Falls back to localhost:8787 in dev.
  */
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8787";
+export const API_URL =
+  (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8787";
 
 export interface SearchHit {
   entity: { id: string; type: string; name: string };
@@ -42,7 +43,7 @@ export async function fetchSearch(q: string): Promise<SearchResponse> {
 }
 
 export async function fetchStats(): Promise<Stats> {
-  const res = await fetch(`${API_URL}/stats`, { next: { revalidate: 60 } });
+  const res = await fetch(`${API_URL}/stats`);
   if (!res.ok) throw new Error("Stats failed");
   return res.json();
 }

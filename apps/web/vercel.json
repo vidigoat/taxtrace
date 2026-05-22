@@ -1,6 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "installCommand": "npm install --no-workspaces --no-package-lock --legacy-peer-deps",
-  "buildCommand": "next build"
+  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
 }

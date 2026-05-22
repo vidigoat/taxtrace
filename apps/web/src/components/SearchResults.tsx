@@ -1,7 +1,5 @@
-"use client";
-
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import { fetchSearch } from "@/lib/api";
 
 export function SearchResults({ query }: { query: string }) {
@@ -50,7 +48,7 @@ export function SearchResults({ query }: { query: string }) {
         {data.hits.map((hit) => (
           <li key={hit.entity.id}>
             <Link
-              href={`/entity/${hit.entity.id}`}
+              to={`/entity/${hit.entity.id}`}
               className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg hover:border-neutral-900 hover:bg-neutral-50 transition-colors"
             >
               <div>
