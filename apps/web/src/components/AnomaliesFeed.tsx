@@ -1,7 +1,7 @@
+import { fetchAnomalies } from "@/lib/api";
+import { formatDate, formatMoney } from "@/lib/format";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { fetchAnomalies } from "@/lib/api";
-import { formatMoney, formatDate } from "@/lib/format";
 
 const SEVERITY_STYLES: Record<string, string> = {
   critical: "bg-red-100 text-red-800 border-red-300",
@@ -55,10 +55,15 @@ export function AnomaliesFeed() {
       {data.anomalies.map((row: any) => {
         const a = row.anomaly;
         return (
-          <article key={a.id} className="border border-neutral-200 rounded-lg p-5 hover:border-neutral-400 transition-colors">
+          <article
+            key={a.id}
+            className="border border-neutral-200 rounded-lg p-5 hover:border-neutral-400 transition-colors"
+          >
             <div className="flex items-start justify-between gap-3 mb-2">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-xs px-2 py-0.5 rounded border ${SEVERITY_STYLES[a.severity] ?? ""}`}>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded border ${SEVERITY_STYLES[a.severity] ?? ""}`}
+                >
                   {a.severity.toUpperCase()}
                 </span>
                 <span className="text-xs text-neutral-500 uppercase tracking-wider">

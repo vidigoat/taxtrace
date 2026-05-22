@@ -1,5 +1,5 @@
-import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export function Search() {
   const navigate = useNavigate();
@@ -19,7 +19,6 @@ export function Search() {
         onChange={(e) => setQ(e.target.value)}
         placeholder="Search any contractor, politician, agency, donation…"
         className="w-full h-14 px-6 pr-32 text-lg border border-neutral-300 rounded-full focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
-        autoFocus
       />
       <button
         type="submit"

@@ -6,9 +6,9 @@
  * the DB for each one.
  */
 
-import { entities, eq, type DB } from "@taxtrace/db";
-import { canonicalName, newId } from "@taxtrace/utils";
+import { type DB, entities, eq } from "@taxtrace/db";
 import type { NewEntity } from "@taxtrace/db";
+import { canonicalName, newId } from "@taxtrace/utils";
 
 export class EntityCache {
   private cache = new Map<string, string>(); // canonical → id

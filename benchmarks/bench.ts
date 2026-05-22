@@ -11,8 +11,8 @@
  *   bun benchmarks/bench.ts
  */
 
-import { createDb } from "@taxtrace/db";
 import { runAllDetectors } from "@taxtrace/anomaly";
+import { createDb } from "@taxtrace/db";
 
 const API = process.env.API_URL ?? "http://localhost:8787";
 
@@ -42,10 +42,12 @@ async function main() {
   await timeOp("GET /search?q=lockheed", () =>
     fetch(`${API}/search?q=lockheed`).then((r) => r.json()),
   );
-  await timeOp("GET /search?q=boeing", () =>
-    fetch(`${API}/search?q=boeing`).then((r) => r.json()),
+  await timeOp("GET /search?q=boeing", () => fetch(`${API}/search?q=boeing`).then((r) => r.json()));
+  await timeOp(
+    "GET /anomalies",
+    () => fetch(`${API}/anomalies?limit=50`).then((r) => r.json()),
+    50,
   );
-  await timeOp("GET /anomalies", () => fetch(`${API}/anomalies?limit=50`).then((r) => r.json()), 50);
 
   console.log("\n=== DB metrics ===");
   const db = createDb();

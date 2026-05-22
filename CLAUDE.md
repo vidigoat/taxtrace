@@ -103,10 +103,22 @@ TaxTrace is a transparency tool. Anyone, any side, can audit. The UI
 shows facts, links evidence, lets users draw conclusions. No editorial
 commentary in code, copy, or commit messages.
 
----
+### 8. Never push code that breaks CI
 
-## Naming
+**Every push to `main` triggers GitHub Actions CI. Every CI failure sends
+Vidit an email. Be respectful of his inbox.**
 
-- Package names: `@taxtrace/*` (e.g. `@taxtrace/db`, `@taxtrace/types`)
-- Conventional Commits in commit messages
-- Live URLs are tracked in README, not invented in commits
+Before every `git push`:
+
+1. **Run the same commands CI runs, locally first.** Currently CI runs:
+   - `bun install --frozen-lockfile`
+   - `bun test`
+   - `apps/web` → `npm install --no-workspaces --no-package-lock --legacy-peer-deps && npm run build`
+   - `apps/lambda` → same install, then `node build.js`
+2. **Pass before push.** If any of those fail locally, fix it before pushing.
+3. **If you change dependencies**, regenerate the lockfile:
+   `rm bun.lock && bun install` → commit the new lockfile **in the same push** as the dep change.
+4. **If you change `.github/workflows/ci.yml`**, run the new commands locally end-to-end before pushing the workflow change.
+5. **If a fix is going to take more than 3 commits**, work on a branch and squash before merging to `main`, so each push to `main` represents a known-good state.
+
+**Don't push and hope.** The email cost is real (10-20 messages per failed batch). The fix cost is small (run the commands first).

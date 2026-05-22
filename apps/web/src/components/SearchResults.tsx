@@ -1,6 +1,6 @@
+import { fetchSearch } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { fetchSearch } from "@/lib/api";
 
 export function SearchResults({ query }: { query: string }) {
   const { data, isLoading, error } = useQuery({

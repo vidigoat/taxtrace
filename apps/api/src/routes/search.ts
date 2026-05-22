@@ -1,6 +1,6 @@
-import { Hono } from "hono";
-import { entities, like, desc, sql, or } from "@taxtrace/db";
+import { desc, entities, like, or, sql } from "@taxtrace/db";
 import { canonicalName } from "@taxtrace/utils";
+import { Hono } from "hono";
 import type { Env } from "../index";
 
 export const searchRouter = new Hono<Env>();
@@ -36,7 +36,9 @@ searchRouter.get("/", async (c) => {
       anomalyScore: entities.anomalyScore,
     })
     .from(entities)
-    .where(or(like(entities.canonicalName, pattern), like(sql`lower(${entities.name})`, namePattern)))
+    .where(
+      or(like(entities.canonicalName, pattern), like(sql`lower(${entities.name})`, namePattern)),
+    )
     .orderBy(desc(entities.totalContractsReceivedUsd))
     .limit(limit);
 

@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { Database } from "bun:sqlite";
-import { drizzle } from "drizzle-orm/bun-sqlite";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import * as schema from "@taxtrace/db";
-import { detectSoleSource } from "../sole-source";
 import { newId } from "@taxtrace/utils";
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import { detectSoleSource } from "../sole-source";
 
 let db: ReturnType<typeof drizzle<typeof schema>>;
 let sqlite: Database;

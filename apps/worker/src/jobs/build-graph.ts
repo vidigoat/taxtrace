@@ -7,7 +7,7 @@
  * graph queries.
  */
 
-import { createDb, contracts, donations, edges, sql } from "@taxtrace/db";
+import { contracts, createDb, donations, edges, sql } from "@taxtrace/db";
 import { newId } from "@taxtrace/utils";
 
 const db = createDb();
@@ -79,4 +79,6 @@ if (donationEdges.length > 0) {
 }
 
 const elapsed = ((Date.now() - start) / 1000).toFixed(2);
-console.log(`✅ Edges rebuilt: ${contractEdges.length} contract + ${donationEdges.length} donation in ${elapsed}s`);
+console.log(
+  `✅ Edges rebuilt: ${contractEdges.length} contract + ${donationEdges.length} donation in ${elapsed}s`,
+);

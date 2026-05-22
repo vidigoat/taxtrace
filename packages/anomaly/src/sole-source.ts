@@ -8,8 +8,8 @@
 
 import { contracts as contractsTable, entities as entitiesTable } from "@taxtrace/db";
 import type { DB, NewAnomaly } from "@taxtrace/db";
-import { eq, and, gte, or, like } from "drizzle-orm";
 import { newId } from "@taxtrace/utils";
+import { and, eq, gte, like, or } from "drizzle-orm";
 
 export const SOLE_SOURCE_THRESHOLD_USD = 250_000;
 

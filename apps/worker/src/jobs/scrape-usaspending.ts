@@ -9,7 +9,7 @@
  * complete fiscal year — enough to demo the entire pipeline.
  */
 
-import { createDb, contracts, sql } from "@taxtrace/db";
+import { contracts, createDb, sql } from "@taxtrace/db";
 import type { NewContract } from "@taxtrace/db";
 import { UsaSpendingClient } from "@taxtrace/scrapers";
 import { newId, parseDate, parseMoney } from "@taxtrace/utils";
@@ -20,7 +20,9 @@ const fiscalYear = Number(args.year ?? new Date().getFullYear());
 const max = Number(args.max ?? 500);
 const minAmount = Number(args.min ?? 1_000_000);
 
-console.log(`📥 Pulling top ${max} contracts from FY${fiscalYear} (min $${minAmount.toLocaleString()})…`);
+console.log(
+  `📥 Pulling top ${max} contracts from FY${fiscalYear} (min $${minAmount.toLocaleString()})…`,
+);
 
 const db = createDb();
 const client = new UsaSpendingClient();
@@ -79,13 +81,16 @@ for await (const row of client.streamTopContracts({ fiscalYear, minAmount, maxRe
   totalUsd += parseMoney(amount);
 
   if (batch.length >= 50) {
-    await db.insert(contracts).values(batch).onConflictDoNothing?.() ?? await db.insert(contracts).values(batch);
+    (await db.insert(contracts).values(batch).onConflictDoNothing?.()) ??
+      (await db.insert(contracts).values(batch));
     batch.length = 0;
   }
 
   if (count % 100 === 0) {
     const rps = count / ((Date.now() - start) / 1000);
-    console.log(`  …${count} contracts ($${(totalUsd / 1e9).toFixed(1)}B total, ${rps.toFixed(1)} rec/s)`);
+    console.log(
+      `  …${count} contracts ($${(totalUsd / 1e9).toFixed(1)}B total, ${rps.toFixed(1)} rec/s)`,
+    );
   }
 }
 

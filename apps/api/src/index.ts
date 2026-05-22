@@ -1,13 +1,13 @@
+import { createDb } from "@taxtrace/db";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { createDb } from "@taxtrace/db";
-import { entitiesRouter } from "./routes/entities";
+import { anomaliesRouter } from "./routes/anomalies";
 import { contractsRouter } from "./routes/contracts";
 import { donationsRouter } from "./routes/donations";
-import { searchRouter } from "./routes/search";
+import { entitiesRouter } from "./routes/entities";
 import { networkRouter } from "./routes/network";
-import { anomaliesRouter } from "./routes/anomalies";
+import { searchRouter } from "./routes/search";
 import { statsRouter } from "./routes/stats";
 
 // Shared DB instance — created once per process.

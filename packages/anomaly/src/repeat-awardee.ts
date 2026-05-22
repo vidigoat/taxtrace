@@ -8,8 +8,8 @@
 
 import { contracts as contractsTable, entities as entitiesTable } from "@taxtrace/db";
 import type { DB, NewAnomaly } from "@taxtrace/db";
-import { eq, sql } from "drizzle-orm";
 import { newId } from "@taxtrace/utils";
+import { eq, sql } from "drizzle-orm";
 
 export interface RepeatAwardeeConfig {
   minConsecutive?: number;

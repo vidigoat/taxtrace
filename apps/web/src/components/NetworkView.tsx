@@ -1,6 +1,6 @@
+import { fetchNetwork } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { fetchNetwork } from "@/lib/api";
 
 export function NetworkView({ rootId }: { rootId: string }) {
   const { data, isLoading } = useQuery({

@@ -1,5 +1,5 @@
+import { anomalies, contracts, desc, donations, entities, sql } from "@taxtrace/db";
 import { Hono } from "hono";
-import { contracts, donations, entities, anomalies, sql, desc } from "@taxtrace/db";
 import type { Env } from "../index";
 
 export const statsRouter = new Hono<Env>();
@@ -22,9 +22,7 @@ statsRouter.get("/", async (c) => {
     })
     .from(donations);
 
-  const [entitiesAgg] = await db
-    .select({ total: sql<number>`count(*)` })
-    .from(entities);
+  const [entitiesAgg] = await db.select({ total: sql<number>`count(*)` }).from(entities);
 
   const [anomaliesAgg] = await db
     .select({

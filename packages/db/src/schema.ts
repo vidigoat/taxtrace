@@ -16,8 +16,8 @@
  * fast for the first 10M rows and lets the demo run on a Vercel build.
  */
 
-import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // ============================================================================
 // entities — every actor in the federal spending graph

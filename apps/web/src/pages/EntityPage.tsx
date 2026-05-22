@@ -1,5 +1,5 @@
-import { useParams } from "react-router-dom";
 import { EntityProfile } from "@/components/EntityProfile";
+import { useParams } from "react-router-dom";
 
 export function EntityPage() {
   const { id } = useParams<{ id: string }>();

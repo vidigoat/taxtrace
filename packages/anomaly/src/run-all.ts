@@ -1,8 +1,8 @@
 import type { DB } from "@taxtrace/db";
 import { anomalies as anomaliesTable } from "@taxtrace/db";
-import { detectSoleSource } from "./sole-source";
-import { detectRepeatAwardee } from "./repeat-awardee";
 import { detectPriceSpike } from "./price-spike";
+import { detectRepeatAwardee } from "./repeat-awardee";
+import { detectSoleSource } from "./sole-source";
 import { detectTimingCorrelation } from "./timing-correlation";
 
 export interface RunAllResult {

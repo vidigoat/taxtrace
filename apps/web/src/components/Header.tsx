@@ -6,7 +6,13 @@ export function Header() {
       <div className="max-w-6xl mx-auto px-4 sm:px-8 py-3 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-md bg-neutral-900 flex items-center justify-center">
-            <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <svg
+              viewBox="0 0 24 24"
+              className="w-5 h-5 text-white"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
               <path d="M3 6h18M3 12h18M3 18h12" strokeLinecap="round" />
             </svg>
           </div>
@@ -14,9 +20,15 @@ export function Header() {
         </Link>
 
         <nav className="flex items-center gap-6 text-sm">
-          <Link to="/search" className="hover:underline">Search</Link>
-          <Link to="/anomalies" className="hover:underline">Anomalies</Link>
-          <Link to="/about" className="hover:underline hidden sm:inline">About</Link>
+          <Link to="/search" className="hover:underline">
+            Search
+          </Link>
+          <Link to="/anomalies" className="hover:underline">
+            Anomalies
+          </Link>
+          <Link to="/about" className="hover:underline hidden sm:inline">
+            About
+          </Link>
           <a
             href="https://github.com/vidigoat/taxtrace"
             target="_blank"

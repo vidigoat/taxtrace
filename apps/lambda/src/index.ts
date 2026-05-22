@@ -8,16 +8,15 @@
  * Pay-as-you-go: Lambda only runs when there's a request. Idle = $0.
  */
 
-import { handle, type LambdaEvent } from "hono/aws-lambda";
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import Database from "better-sqlite3";
 import path from "node:path";
+import Database from "better-sqlite3";
+import { Hono } from "hono";
+import { type LambdaEvent, handle } from "hono/aws-lambda";
+import { cors } from "hono/cors";
 
 // Locate the SQLite DB inside the Lambda package.
 // In production, our deploy script copies taxtrace.db next to this handler.
-const DB_PATH =
-  process.env.DATABASE_PATH ?? path.join(__dirname, "taxtrace.db");
+const DB_PATH = process.env.DATABASE_PATH ?? path.join(__dirname, "taxtrace.db");
 
 // Single connection — Lambda reuses warm container, no need for pool.
 let _db: Database.Database | null = null;
@@ -36,9 +35,7 @@ app.use("*", cors({ origin: "*", maxAge: 600 }));
 // keeps the bundle small and dependency-light)
 // ───────────────────────────────────────────────────────────────────────────
 
-app.get("/", (c) =>
-  c.json({ name: "TaxTrace API on Lambda", version: "0.1.0", status: "ok" }),
-);
+app.get("/", (c) => c.json({ name: "TaxTrace API on Lambda", version: "0.1.0", status: "ok" }));
 
 app.get("/health", (c) => c.json({ ok: true, time: new Date().toISOString() }));
 
@@ -226,7 +223,9 @@ app.get("/network/:id", (c) => {
     return c.json({ rootId, depth, nodes: [], edges: [] });
   }
 
-  const placeholders = Array.from(visited).map(() => "?").join(",");
+  const placeholders = Array.from(visited)
+    .map(() => "?")
+    .join(",");
   const nodes = db
     .prepare(
       `SELECT id, type, name, anomaly_score, total_contracts_received_usd FROM entities WHERE id IN (${placeholders})`,

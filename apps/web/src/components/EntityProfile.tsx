@@ -1,8 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
 import { fetchEntity } from "@/lib/api";
-import { formatMoney, formatDate } from "@/lib/format";
-import { NetworkView } from "./NetworkView";
+import { formatDate, formatMoney } from "@/lib/format";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { NetworkView } from "./NetworkView";
 
 export function EntityProfile({ id }: { id: string }) {
   const { data, isLoading, error } = useQuery({
@@ -76,9 +76,7 @@ export function EntityProfile({ id }: { id: string }) {
                     <td className="p-3 text-right tabular-nums font-medium">
                       {formatMoney(c.amountUsd)}
                     </td>
-                    <td className="p-3 text-right text-neutral-500">
-                      {formatDate(c.signedDate)}
-                    </td>
+                    <td className="p-3 text-right text-neutral-500">{formatDate(c.signedDate)}</td>
                   </tr>
                 ))}
               </tbody>

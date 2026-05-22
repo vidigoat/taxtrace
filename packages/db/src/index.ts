@@ -1,5 +1,5 @@
-import { drizzle as drizzleBun } from "drizzle-orm/bun-sqlite";
 import { drizzle as drizzleBetter } from "drizzle-orm/better-sqlite3";
+import { drizzle as drizzleBun } from "drizzle-orm/bun-sqlite";
 import * as schema from "./schema";
 
 export * from "./schema";

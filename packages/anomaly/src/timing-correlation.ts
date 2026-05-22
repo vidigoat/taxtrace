@@ -9,10 +9,10 @@
  * journalism lead that investigative reporters look for.
  */
 
-import { contracts as contractsTable, donations as donationsTable, entities as entitiesTable } from "@taxtrace/db";
+import { contracts as contractsTable, donations as donationsTable } from "@taxtrace/db";
 import type { DB, NewAnomaly } from "@taxtrace/db";
-import { and, eq, gte, lte, sql } from "drizzle-orm";
-import { newId, daysBetween } from "@taxtrace/utils";
+import { daysBetween, newId } from "@taxtrace/utils";
+import { and, eq, gte, lte } from "drizzle-orm";
 
 export interface TimingCorrelationConfig {
   /** Window after donation in which contract is "suspicious." Default 90 days. */
@@ -50,7 +50,8 @@ export async function detectTimingCorrelation(
   for (const donation of donations) {
     const windowEnd = new Date(donation.contributionDate.getTime() + windowDays * 86_400_000);
 
-    // Find contracts to this donor (or donor's employer) within the window
+    // Find contracts to this donor (or donor's employer) within the window.
+    // No join needed here — we already have donor info from the outer loop.
     const suspiciousContracts = await db
       .select({
         id: contractsTable.id,
@@ -58,10 +59,8 @@ export async function detectTimingCorrelation(
         agencyId: contractsTable.agencyId,
         amountUsd: contractsTable.amountUsd,
         signedDate: contractsTable.signedDate,
-        recipientName: entitiesTable.name,
       })
       .from(contractsTable)
-      .leftJoin(entitiesTable, eq(contractsTable.recipientId, entitiesTable.id))
       .where(
         and(
           eq(contractsTable.recipientId, donation.donorId),

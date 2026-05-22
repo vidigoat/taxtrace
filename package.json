@@ -5,11 +5,7 @@
   "description": "Open public spending forensics. Every federal dollar. Every connection. Public.",
   "license": "MIT",
   "author": "Vidit Patankar",
-  "workspaces": [
-    "apps/*",
-    "packages/*",
-    "benchmarks"
-  ],
+  "workspaces": ["apps/*", "packages/*", "benchmarks"],
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
@@ -36,7 +32,5 @@
     "bun": ">=1.2.0"
   },
   "packageManager": "bun@1.2.0",
-  "trustedDependencies": [
-    "@biomejs/biome"
-  ]
+  "trustedDependencies": ["@biomejs/biome"]
 }

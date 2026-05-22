@@ -1,6 +1,6 @@
-import { Link } from "react-router-dom";
 import { Search } from "@/components/Search";
 import { StatsBlock } from "@/components/StatsBlock";
+import { Link } from "react-router-dom";
 
 export function HomePage() {
   return (

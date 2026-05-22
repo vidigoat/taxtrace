@@ -1,5 +1,5 @@
+import { anomalies, desc, entities, eq } from "@taxtrace/db";
 import { Hono } from "hono";
-import { anomalies, entities, eq, desc } from "@taxtrace/db";
 import type { Env } from "../index";
 
 export const anomaliesRouter = new Hono<Env>();

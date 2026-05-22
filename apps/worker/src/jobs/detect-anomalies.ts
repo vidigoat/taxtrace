@@ -6,8 +6,8 @@
  *   bun src/jobs/detect-anomalies.ts
  */
 
-import { createDb } from "@taxtrace/db";
 import { runAllDetectors } from "@taxtrace/anomaly";
+import { createDb } from "@taxtrace/db";
 
 const db = createDb();
 console.log("🔎 Running anomaly detection…");
