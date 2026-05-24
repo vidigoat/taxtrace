@@ -89,11 +89,11 @@ app.get("/search", (c) => {
     .prepare(
       `SELECT id, type, name, total_contracts_received_usd as totalUsd
        FROM entities
-       WHERE canonical_name LIKE ? OR lower(name) LIKE ?
+       WHERE canonical_name LIKE ? OR lower(name) LIKE ? OR lower(description) LIKE ?
        ORDER BY total_contracts_received_usd DESC
        LIMIT ?`,
     )
-    .all(pattern, pattern, limit) as Array<{ id: string; type: string; name: string }>;
+    .all(pattern, pattern, pattern, limit) as Array<{ id: string; type: string; name: string }>;
 
   return c.json({
     query: q,

@@ -68,7 +68,7 @@ for await (const row of client.streamTopContracts({ fiscalYear, minAmount, maxRe
     signedDate,
     startDate: parseDate(r["Start Date"] as string | null | undefined),
     endDate: parseDate(r["End Date"] as string | null | undefined),
-    description: (r.Description as string | null) ?? null,
+    description: cleanDescription(r.Description as string | null),
     competitionExtent: null,
     isSetAside: false,
     performanceState: null,
@@ -111,6 +111,24 @@ await db.run(sql`
 
 const elapsed = ((Date.now() - start) / 1000).toFixed(1);
 console.log(`✅ Done: ${count} contracts in ${elapsed}s ($${(totalUsd / 1e9).toFixed(2)}B total)`);
+
+// USAspending occasionally returns raw FPDS Archive Atom field dumps in the
+// Description column instead of a real description. They look like
+// `200204!008532!1700!AF600 !NAVAL AIR SYSTEMS COMMAND !...!...` — dozens
+// of pipe-delimited positional fields. Rendering them in the UI looks like
+// garbage, so drop them. The contract row still has award ID, amount, and
+// date — the user just doesn't see a fake description.
+function cleanDescription(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  // Heuristic: many `!` separators AND mostly uppercase/digits/spaces between
+  // them. Real descriptions occasionally use `!` (e.g. "WIN!") but never have
+  // 5+ separators in a row across a long string.
+  const bangs = (trimmed.match(/!/g) ?? []).length;
+  if (bangs >= 5 && trimmed.length > 80) return null;
+  return trimmed;
+}
 
 function parseArgs(argv: string[]): Record<string, string> {
   const out: Record<string, string> = {};
